@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-parchment: #f7f3eb;
+    --color-ember:     #c84b1a;
+    --color-gold:      #c9a84c;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Subtle parchment texture */
+  body {
+    background-color: #f7f3eb;
+    background-image:
+      radial-gradient(ellipse at 20% 80%, rgba(201, 168, 76, 0.06) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(200, 75, 26, 0.04) 0%, transparent 60%);
+    min-height: 100vh;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar       { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #b8a880; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9e8c5c; }
+}
+
+@layer components {
+  /* Message bubble styles */
+  .message-own {
+    @apply bg-ink-800 text-parchment rounded-2xl rounded-br-sm px-4 py-2.5;
+  }
+  .message-other {
+    @apply bg-white border border-ink-100 text-ink-800 rounded-2xl rounded-bl-sm px-4 py-2.5;
+  }
+  .message-ai {
+    @apply bg-amber-50 border border-gold/40 text-ink-700 rounded-2xl rounded-bl-sm px-4 py-2.5;
+  }
+
+  /* Presence indicator */
+  .presence-dot {
+    @apply w-2 h-2 rounded-full bg-emerald-400 shadow-sm;
+    box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.2);
+  }
+}
+
+/* CopilotKit custom theme overrides */
+.copilotKitButton {
+  background-color: var(--color-ember) !important;
+  color: white !important;
+}
+.copilotKitWindow {
+  border-color: rgba(201, 168, 76, 0.3) !important;
+  border-radius: 1rem !important;
+}
