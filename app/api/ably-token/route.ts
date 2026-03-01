@@ -1,5 +1,6 @@
 import Ably from 'ably'
 import { NextRequest, NextResponse } from 'next/server'
+import { validateMemberToken } from '@/lib/auth'
 
 /**
  * Ably Token Request endpoint.
@@ -14,10 +15,17 @@ export async function GET(req: NextRequest) {
   const memberToken = req.nextUrl.searchParams.get('memberToken')
   const clientId     = req.nextUrl.searchParams.get('clientId') || 'anonymous'
 
-  // --- Member gate ---
-  const validTokens = (process.env.MEMBER_TOKENS || '').split(',').map(t => t.trim())
-  if (!memberToken || !validTokens.includes(memberToken)) {
-    return NextResponse.json({ error: 'Access denied — members only' }, { status: 403 })
+  // --- Member gate (centralized validation) ---
+  const validation = validateMemberToken(memberToken, '[ably-token]')
+  if (!validation.valid) {
+    const isDevelopment = process.env.NODE_ENV === 'development'
+    return NextResponse.json(
+      {
+        error: validation.error || 'Access denied',
+        ...(isDevelopment && validation.debugInfo ? { debugInfo: validation.debugInfo } : {}),
+      },
+      { status: 403 }
+    )
   }
 
   const ably = new Ably.Rest(process.env.ABLY_API_KEY!)

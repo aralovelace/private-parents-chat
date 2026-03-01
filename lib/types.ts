@@ -4,6 +4,7 @@ export interface ChatMessage {
   text: string
   timestamp: number
   isAI?: boolean
+  likes?: string[] // Array of member names who liked this message
 }
 
 export interface Member {

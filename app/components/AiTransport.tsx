@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Ably from 'ably'
+import { SparklesIcon, PaperAirplaneIcon, UserCircleIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline'
+import { CheckCircleIcon } from '@heroicons/react/24/solid'
 
 interface AiTransportProps {
   /** The Ably Realtime client (already authed via token auth) */
@@ -125,6 +127,15 @@ export function useAiTransport({
         // Optional: could show a "thinking" indicator here
       })
 
+      channel.subscribe('error', (message) => {
+        setState(prev => ({
+          ...prev,
+          isStreaming: false,
+          error: message.data.error || 'AI assistant encountered an error',
+        }))
+        cleanupChannel()
+      })
+
       // Now trigger the server-side stream
       try {
         const res = await fetch('/api/ai-stream', {
@@ -135,15 +146,30 @@ export function useAiTransport({
 
         if (!res.ok) {
           const data = await res.json()
+
+          // Log debug info to console in development
+          if (data.debugInfo) {
+            console.error('[AI Transport] Server error debug info:', data.debugInfo)
+          }
+
+          // Show user-friendly error message
+          let errorMessage = data.error || 'AI assistant unavailable'
+
+          // Distinguish between auth errors and server config errors
+          if (errorMessage.includes('Server configuration error')) {
+            errorMessage = 'Service temporarily unavailable. Please contact support.'
+          }
+
           setState(prev => ({
             ...prev,
             isStreaming: false,
-            error: data.error || 'AI assistant unavailable',
+            error: errorMessage,
           }))
           cleanupChannel()
         }
         // If ok, the stream is now flowing via Ably — nothing more to do here
       } catch (err) {
+        console.error('[AI Transport] Network error:', err)
         setState(prev => ({
           ...prev,
           isStreaming: false,
@@ -204,15 +230,17 @@ export function AiTransportPanel({
   }
 
   return (
-    <div className="flex flex-col h-full bg-amber-50/60 border-l border-gold/30">
-      {/* Header */}
-      <div className="px-4 py-3 border-b border-gold/20 bg-amber-50">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">✨</span>
+    <div className="flex flex-col h-full bg-gradient-to-b from-secondary-50/40 to-primary-50/20 lg:border-l border-primary-200">
+      {/* Header - hidden on mobile (shown in parent overlay) */}
+      <div className="hidden lg:block px-4 py-3 border-b border-primary-200 bg-white/80 backdrop-blur-sm">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-gradient-to-br from-secondary-400 to-primary-400 rounded-xl">
+            <SparklesIcon className="w-5 h-5 text-white" />
+          </div>
           <div>
-            <p className="text-sm font-semibold text-ink-800">{communityName} Assistant</p>
-            <p className="text-[10px] text-ink-400 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+            <p className="text-sm font-semibold text-neutral-800">{communityName} Assistant</p>
+            <p className="text-[10px] text-neutral-500 flex items-center gap-1.5">
+              <CheckCircleIcon className="w-3 h-3 text-accent-500" />
               Powered by Ably AI Transport
             </p>
           </div>
@@ -220,63 +248,104 @@ export function AiTransportPanel({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
         {history.length === 0 && !isStreaming && (
-          <div className="text-center py-8">
-            <p className="text-sm text-ink-500 leading-relaxed">
-              Hi {memberName}! Ask me anything — I can help with parenting questions, 
-              summarise discussions, or just chat.
-            </p>
-            <div className="mt-4 space-y-2">
-              {[
-                'What are some screen-free activities for toddlers?',
-                'Summarise recent chat discussions',
-                'Tips for getting kids to sleep earlier?',
-              ].map(suggestion => (
-                <button
-                  key={suggestion}
-                  onClick={() => { setQuestion(suggestion); ask(suggestion); setHistory(prev => [...prev, { role: 'user', text: suggestion }]) }}
-                  className="block w-full text-left text-xs px-3 py-2 rounded-lg
-                             bg-white border border-gold/30 text-ink-600 hover:bg-amber-50
-                             hover:border-gold/60 transition-all"
-                >
-                  {suggestion}
-                </button>
-              ))}
+          <div className="py-4 sm:py-6 px-3">
+            <div className="flex items-start gap-2 mb-4">
+              <ChatBubbleLeftRightIcon className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs sm:text-sm text-neutral-700 leading-relaxed">
+                Hi {memberName}! Need inspiration, advice, or just someone to talk to? Here are some ideas:
+              </p>
+            </div>
+            <div className="space-y-4 text-xs sm:text-sm text-neutral-700 leading-relaxed">
+              <div className="bg-white/60 backdrop-blur-sm rounded-xl p-3 border border-primary-100">
+                <p className="font-semibold text-neutral-800">&quot;Nature Scavenger Hunt&quot;</p>
+                <p className="text-neutral-600 mt-0.5">Great question! It&apos;s wonderful to encourage outdoor exploration and interaction. Here are fun activities for little ones: &quot;Treasure Hunt&quot; — hide painted rocks or small toys in the garden. &quot;Building & Stacking&quot; Blocks. Duplo or mega Bloks are fantastic. Use natural materials too like sticks, pine cones or sand and add scoops and diggers! &quot;Messy Play&quot; — Finger paint, play dough, or rice bins. Adventures! — A walk to the park, the library, or market, or sand and add scoops and play simple instruments, or sing together — music is magical.</p>
+              </div>
+              <div className="bg-white/60 backdrop-blur-sm rounded-xl p-3 border border-secondary-100">
+                <p className="font-semibold text-neutral-800">&quot;Puzzles&quot;</p>
+                <p className="text-neutral-600 mt-0.5">Chunky wooden puzzles or simple jigsaws — start with 4-6 pieces and progress from there. Sorting games — matching colours, playing with dolls or animal figures, or building simple worlds with toy cars.</p>
+              </div>
+              <div className="bg-white/60 backdrop-blur-sm rounded-xl p-3 border border-accent-100">
+                <p className="font-semibold text-neutral-800">&quot;Tidy up&quot; toys or water plants</p>
+                <p className="text-neutral-600 mt-0.5">Toddlers love helping — even if it&apos;s slower! These activities give you some screen-free bonding time while building curiosity and motor skills.</p>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-primary-200">
+              <p className="text-[11px] text-neutral-500 mb-2 flex items-center gap-1.5">
+                <SparklesIcon className="w-3.5 h-3.5" />
+                Quick questions:
+              </p>
+              <div className="space-y-2">
+                {[
+                  'Summarise recent chat discussions',
+                  'Tips for getting kids to sleep earlier?',
+                  'How do I handle tantrums in public?',
+                ].map(suggestion => (
+                  <button
+                    key={suggestion}
+                    onClick={() => { setQuestion(suggestion); ask(suggestion); setHistory(prev => [...prev, { role: 'user', text: suggestion }]) }}
+                    className="block w-full text-left text-[11px] sm:text-xs px-3 py-2.5 sm:py-2 rounded-lg
+                               bg-white border border-primary-200 text-neutral-700 hover:bg-primary-50
+                               hover:border-primary-300 hover:shadow-sm transition-all min-h-[44px] sm:min-h-0 flex items-center"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
         {history.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm leading-relaxed ${
+          <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            {msg.role === 'ai' && (
+              <div className="flex-shrink-0 mt-1">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-secondary-400 to-primary-400 flex items-center justify-center">
+                  <SparklesIcon className="w-3.5 h-3.5 text-white" />
+                </div>
+              </div>
+            )}
+            <div className={`max-w-[85%] sm:max-w-[80%] rounded-xl px-3 py-2 text-xs sm:text-sm leading-relaxed break-words whitespace-pre-line ${
               msg.role === 'user'
-                ? 'bg-ink-800 text-parchment rounded-br-sm'
-                : 'bg-white border border-gold/30 text-ink-700 rounded-bl-sm'
+                ? 'bg-primary-600 text-white rounded-br-sm shadow-sm'
+                : 'bg-white border border-secondary-200 text-neutral-700 rounded-bl-sm shadow-sm'
             }`}>
               {msg.text}
               {msg.role === 'ai' && onPostToChat && (
                 <button
                   onClick={() => onPostToChat(msg.text)}
-                  className="block mt-2 text-[10px] text-amber-600 hover:text-ember font-semibold"
+                  className="flex items-center gap-1.5 mt-2 text-[10px] text-primary-600 hover:text-primary-700 font-semibold min-h-[44px] sm:min-h-0
+                             px-2 py-1 sm:p-0 -mx-2 sm:mx-0 rounded sm:rounded-none transition-colors"
                 >
-                  📢 Share to group chat
+                  <ChatBubbleLeftRightIcon className="w-3.5 h-3.5" />
+                  Share to group chat
                 </button>
               )}
             </div>
+            {msg.role === 'user' && (
+              <div className="flex-shrink-0 mt-1">
+                <UserCircleIcon className="w-6 h-6 text-primary-400" />
+              </div>
+            )}
           </div>
         ))}
 
         {/* Live streaming tokens */}
         {isStreaming && (
-          <div className="flex justify-start">
-            <div className="max-w-[85%] rounded-xl rounded-bl-sm px-3 py-2 text-sm leading-relaxed
-                            bg-white border border-gold/30 text-ink-700">
+          <div className="flex gap-2 justify-start">
+            <div className="flex-shrink-0 mt-1">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-secondary-400 to-primary-400 flex items-center justify-center">
+                <SparklesIcon className="w-3.5 h-3.5 text-white animate-pulse" />
+              </div>
+            </div>
+            <div className="max-w-[85%] sm:max-w-[80%] rounded-xl rounded-bl-sm px-3 py-2 text-xs sm:text-sm leading-relaxed
+                            bg-white border border-secondary-200 text-neutral-700 break-words whitespace-pre-line shadow-sm">
               {streamingText || (
-                <span className="flex gap-1 items-center text-ink-400">
-                  <span className="w-1.5 h-1.5 bg-ink-300 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 bg-ink-300 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 bg-ink-300 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                <span className="flex gap-1 items-center text-neutral-400">
+                  <span className="w-1.5 h-1.5 bg-secondary-300 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 bg-primary-300 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 bg-accent-300 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
                 </span>
               )}
               {/* Streaming cursor */}
@@ -286,7 +355,7 @@ export function AiTransportPanel({
         )}
 
         {error && (
-          <div className="text-xs text-ember bg-ember/5 border border-ember/20 rounded-lg px-3 py-2">
+          <div className="text-xs text-warm-700 bg-warm-50 border border-warm-200 rounded-lg px-3 py-2 shadow-sm">
             {error}
           </div>
         )}
@@ -295,7 +364,7 @@ export function AiTransportPanel({
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t border-gold/20">
+      <div className="p-3 border-t border-primary-200 bg-white/80 backdrop-blur-sm">
         <div className="flex gap-2">
           <input
             value={question}
@@ -303,20 +372,28 @@ export function AiTransportPanel({
             onKeyDown={e => e.key === 'Enter' && handleAsk()}
             placeholder="Ask the assistant…"
             disabled={isStreaming}
-            className="flex-1 text-sm px-3 py-2 rounded-lg border border-gold/30 bg-white
-                       text-ink-800 placeholder-ink-300 focus:outline-none focus:ring-2
-                       focus:ring-gold/40 focus:border-gold transition-all disabled:opacity-50"
+            className="flex-1 text-xs sm:text-sm px-3 py-2.5 sm:py-2 rounded-lg border border-primary-200 bg-white
+                       text-neutral-800 placeholder-neutral-400 focus:outline-none focus:ring-2
+                       focus:ring-primary-400 focus:border-primary-400 transition-all disabled:opacity-50 shadow-sm"
+            style={{ minHeight: '44px' }}
           />
           <button
             onClick={handleAsk}
             disabled={isStreaming || !question.trim()}
-            className="px-3 py-2 rounded-lg bg-ink-800 hover:bg-ember disabled:bg-ink-300
-                       text-white text-sm transition-all"
+            className="px-4 py-2 rounded-lg bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700
+                       disabled:from-neutral-300 disabled:to-neutral-300 text-white text-sm transition-all
+                       min-w-[44px] min-h-[44px] flex items-center justify-center shadow-sm disabled:shadow-none"
+            aria-label="Send question"
           >
-            {isStreaming ? '…' : '→'}
+            {isStreaming ? (
+              <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+            ) : (
+              <PaperAirplaneIcon className="w-4 h-4" />
+            )}
           </button>
         </div>
-        <p className="mt-1.5 text-[9px] text-ink-400 text-center">
+        <p className="mt-1.5 text-[9px] text-neutral-500 text-center hidden sm:flex items-center justify-center gap-1">
+          <CheckCircleIcon className="w-3 h-3 text-accent-500" />
           Responses stream via Ably — resumable if you switch tabs
         </p>
       </div>

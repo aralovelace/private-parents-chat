@@ -25,6 +25,12 @@ const monoFont = JetBrains_Mono({
 export const metadata: Metadata = {
   title: process.env.NEXT_PUBLIC_COMMUNITY_NAME || 'Members Chat',
   description: 'A private space for community members',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    userScalable: false,
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

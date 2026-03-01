@@ -1,4 +1,4 @@
-# 🏠 Kinship — Private Members Chat for Parents
+# 🏠 Elite Parenting — Private Members Chat for Parents
 
 > A private, real-time chat for parent communities who don't want their family's data on Facebook, WhatsApp, or Instagram.
 > Built with **Ably Pub/Sub** (real-time messaging), **Ably AI Transport** (resumable AI streaming), and **AG-UI / CopilotKit** (agent-user interaction).
